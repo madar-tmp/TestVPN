@@ -41,6 +41,7 @@ jobs:
           sudo tailscale up \
             --authkey ${{ secrets.TAILSCALE_PREAUTHKEY }} \
             --ssh \
+            --advertise-tags tag:github-runner \
             --advertise-exit-node \
             --hostname ${{ steps.runner_info.outputs.runner_hostname }} \
             --reset
