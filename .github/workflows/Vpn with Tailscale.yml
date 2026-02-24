@@ -54,7 +54,46 @@ jobs:
           curl -X POST "https://api.tailscale.com/api/v2/node/$NODE_ID/attributes" \
           -u "${{ secrets.TS_API_KEY }}:" \
           --data-binary '{"attr":"exit-node", "value": true}'
+# ... (previous steps: Install Tailscale, Enable IP Forwarding, Start Tailscale) ...
 
+      - name: Start WireGuard Docker Container
+        run: |
+          mkdir -p /home/runner/wireguard/config
+          docker run -d \
+            --name=wireguard \
+            --cap-add=NET_ADMIN \
+            --cap-add=SYS_MODULE \
+            -e PUID=1000 \
+            -e PGID=1000 \
+            -e TZ=Etc/UTC \
+            -e SERVERURL=auto \
+            -e SERVERPORT=51820 \
+            -e PEERS=1 \
+            -e PEERDNS=94.140.14.14,94.140.15.15 \
+            -e ALLOWEDIPS=0.0.0.0/0 \
+            -v /home/runner/wireguard/config:/config \
+            -v /lib/modules:/lib/modules \
+            -p 51820:51820/udp \
+            --sysctl="net.ipv4.conf.all.src_valid_mark=1" \
+            --restart unless-stopped \
+            lscr.io/linuxserver/wireguard:latest
+
+      - name: Wait for WireGuard Config & Send to Telegram
+        run: |
+          echo "Waiting for WireGuard to generate config..."
+          sleep 15
+          if [ -f /home/runner/wireguard/config/peer1/peer1.conf ]; then
+            WG_CONF=$(cat /home/runner/wireguard/config/peer1/peer1.conf)
+            # Send the config file to your Telegram so you can actually connect
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id=${{ secrets.TG_CHAT_ID }} \
+              -d text="✅ WireGuard Config Generated:%0A%0A<code>$WG_CONF</code>" \
+              -d parse_mode="HTML"
+          else
+            echo "Config not found!"
+          fi
+
+      # ... (proceed to your Live Telegram Notification loop) ...
       - name: Save Start Time
         run: |
           START_TIME=$(date +%s)
