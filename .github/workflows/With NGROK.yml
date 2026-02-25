@@ -1,4 +1,4 @@
-name: Tailscale With Progress Bar
+name: With NGROK
 on:
   workflow_dispatch: {}
   #schedule:
